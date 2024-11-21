@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.VisualScripting;
 
 
 
@@ -22,35 +23,45 @@ public class MosueMovement : MonoBehaviour
         public int Y;
     }
 
-    public static MosueMovement instace { get; private set; }
+    public static MosueMovement Instance { get; private set; }
     private List<MouseRecordData> mouseMoventRecorded = new List<MouseRecordData>();
     private Vector2 originalPosition;
     private bool recordingMouse;
     private bool playingRecording;
+    private bool notFirstLoad;
     private float startTime;
+    private float timeTillNextMovement;
     private string saveFile;
 
     private void Awake()
     {
-        if (instace == null)
+        if (Instance == null)
         {
-            instace = this;
+            Instance = this;
             DontDestroyOnLoad(gameObject);
         }
         else
         {
             Destroy(gameObject);
         }
+        SaveData.Load();
     }
     private void Start()
     {
-        SaveData.Load();
+        if (notFirstLoad)
+        {
+            OpeningStartLogic();
+            UIManager.Instance.DebugMessage("Program loaded with recorded information");
+        }
+        else UIManager.Instance.firstTimeLoadObject.gameObject.SetActive(true);
     }
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape)) // Get out of jail
         {
             StopAllCoroutines();
+            UIManager.Instance.DebugMessage("Stopped All");
+            UIManager.Instance.StopEverything();
         }
 
         if (recordingMouse)
@@ -75,9 +86,11 @@ public class MosueMovement : MonoBehaviour
         }
     }
 
-    private int ReturnRandomNumber() //Mouse giggle return value. 
+    private int ReturnRandomNumber() //Mouse jiggle and time recursion. 
     {
-        return UnityEngine.Random.Range(-3, 3);
+        int number = UnityEngine.Random.Range(-90, 90);
+        UIManager.Instance.DebugMessage(number.ToString() + "s - Time till playing again");
+        return number;
     }
 
 
@@ -86,6 +99,7 @@ public class MosueMovement : MonoBehaviour
     {
         if (playingRecording)
         {
+            
             POINT point;
             int worldPosX;
             int worldPoxY;
@@ -103,6 +117,9 @@ public class MosueMovement : MonoBehaviour
             }
         }
         playingRecording = false;
+        UIManager.Instance.DebugMessage("Finished");
+        yield return new WaitForSeconds(30);
+        OpeningStartLogic();
     }
     private int TravelDistance()
     {
@@ -110,8 +127,26 @@ public class MosueMovement : MonoBehaviour
     }
 
 
+    //Opening Logic ------------------------------------------------------------------------
+    private void OpeningStartLogic()
+    {
+        if (!playingRecording)
+        {
+            StartCoroutine(TimerRecursion());
+            UIManager.Instance.SwitchColorGreen();
+            timeTillNextMovement = ReturnRandomNumber();
+        }
+    }
+
+    private IEnumerator TimerRecursion()
+    {
+        yield return new WaitForSeconds(timeTillNextMovement);
+        playingRecording = true;
+        StartCoroutine(PlayBack());
+    }
+
     //UI Buttons ---------------------------------------------------------------------------
-    public void GiggleStart()
+    public void GiggleStart() // not doing anything left for doc's
     {
         StartCoroutine(MouseJiggle());
     }
@@ -120,7 +155,8 @@ public class MosueMovement : MonoBehaviour
     {
         StopAllCoroutines();
         recordingMouse = false;
-        Debug.Log("Stop Everything!");
+        UIManager.Instance.DebugMessage("Stop everything");
+
     }
     public void RecordingStart()
     {
@@ -128,22 +164,25 @@ public class MosueMovement : MonoBehaviour
         startTime = Time.time;
         recordingMouse = true;
         Debug.Log("Recroding");
+        UIManager.Instance.firstTimeLoadObject.SetActive(false);
     }
     public void StopRecrodingMouse()
     {
+        notFirstLoad = true;
         recordingMouse = false;
-        Debug.Log("We Saved");
+        playingRecording = false;
+        UIManager.Instance.DebugMessage("Programed saved");
         SaveData.Save();
     }
     public void PlayRecording()
     {
-        playingRecording = true;
-        StartCoroutine(PlayBack());
-        Debug.Log("Playing");
+        playingRecording = false;
+        OpeningStartLogic();
+        UIManager.Instance.DebugMessage("Program started again");
     }
 
 
-
+    //Save and Load ----------------------------------------------------------------------------------------------------------------
     public void Save(ref SceneRecords data)
     {
         List<RecordingsOfMouse> sceneRecords = new List<RecordingsOfMouse>();
@@ -161,14 +200,22 @@ public class MosueMovement : MonoBehaviour
             }
         }
         data.recordingsOfMice = sceneRecords.ToArray();
+        data.firstTimeLoaded = notFirstLoad;
     }
 
     public void Load(ref SceneRecords data)
     {
-        for (int i = data.recordingsOfMice.Length - 1; i >= 0; i--)
+        if (data.recordingsOfMice != null && data.recordingsOfMice.Length > 0) 
         {
-            mouseMoventRecorded.Add(new MouseRecordData(data.recordingsOfMice[i].postion, data.recordingsOfMice[i].timestamp));
-            Debug.Log(data.recordingsOfMice[i].timestamp);
+            for (int i = data.recordingsOfMice.Length - 1; i >= 0; i--)
+            {
+                mouseMoventRecorded.Add(new MouseRecordData(data.recordingsOfMice[i].postion, data.recordingsOfMice[i].timestamp));
+            }
+            notFirstLoad = data.firstTimeLoaded;
+            if (notFirstLoad)
+            {
+                UIManager.Instance.firstTimeLoadObject.SetActive(false);
+            }
         }
     }
 
@@ -189,6 +236,7 @@ public class MouseRecordData
 public struct SceneRecords
 {
     public RecordingsOfMouse[] recordingsOfMice;
+    public bool firstTimeLoaded;
 }
 
 [System.Serializable]

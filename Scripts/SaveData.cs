@@ -27,7 +27,7 @@ public class SaveData
 
     private static void HandleSaveData()
     {
-        MosueMovement.instace.Save(ref _saveData.sceneRecords);
+        MosueMovement.Instance.Save(ref _saveData.sceneRecords);
     }
     public static void Load()
     {
@@ -38,6 +38,6 @@ public class SaveData
 
     private static void HandleLoadData()
     {
-        MosueMovement.instace.Load(ref _saveData.sceneRecords);
+        MosueMovement.Instance.Load(ref _saveData.sceneRecords);
     }
 }

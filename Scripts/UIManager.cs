@@ -4,8 +4,10 @@ using TMPro;
 
 public class UIManager : MonoBehaviour
 {
+    public static UIManager Instance;
     public TextMeshProUGUI recordingText;
     public TextMeshProUGUI playText;
+    public TextMeshProUGUI debugMessageText;
     public Image recordingButton;
     public Image playButton;
 
@@ -14,7 +16,20 @@ public class UIManager : MonoBehaviour
     public Color whiteColor;
 
     public GameObject playButtonObject;
+    public GameObject firstTimeLoadObject;
 
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
     public void SwitchColorRed()
     {
         playButtonObject.SetActive(false);
@@ -42,5 +57,10 @@ public class UIManager : MonoBehaviour
         playText.text = "Play Movements";
         recordingButton.color = whiteColor;
         playButton.color = whiteColor;
+    }
+
+    public void DebugMessage(string  msg)
+    {
+        debugMessageText.text = msg;
     }
 }
